@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: recipe-backend
+  namespace: recipe-app
+spec:
+  selector:
+    app: recipe-backend
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: NodePort

@@ -1,0 +1,89 @@
+-- Расширения для поиска
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+-- Справочник кухонь
+CREATE TABLE cuisines (
+    id   SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- Основная таблица рецептов с партиционированием
+CREATE TABLE recipes (
+    id          BIGSERIAL,
+    title       VARCHAR(255) NOT NULL,
+    description TEXT,
+    cuisine_id  INT          NOT NULL REFERENCES cuisines(id),
+    cook_time   INT          NOT NULL,
+    servings    INT          NOT NULL DEFAULT 4,
+    difficulty  SMALLINT     NOT NULL DEFAULT 2 CHECK (difficulty BETWEEN 1 AND 5),
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, cuisine_id)
+) PARTITION BY LIST (cuisine_id);
+
+-- Ингредиенты
+CREATE TABLE ingredients (
+    id   BIGSERIAL PRIMARY KEY,
+    name VARCHAR(150) NOT NULL UNIQUE
+);
+
+-- Связь рецепт-ингредиент
+CREATE TABLE recipe_ingredients (
+    recipe_id     BIGINT       NOT NULL,
+    ingredient_id BIGINT       NOT NULL REFERENCES ingredients(id),
+    amount        NUMERIC(8,2),
+    unit          VARCHAR(50),
+    PRIMARY KEY (recipe_id, ingredient_id)
+);
+
+-- Теги
+CREATE TABLE tags (
+    id   SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- Связь рецепт-тег
+CREATE TABLE recipe_tags (
+    recipe_id BIGINT NOT NULL,
+    tag_id    INT    NOT NULL REFERENCES tags(id),
+    PRIMARY KEY (recipe_id, tag_id)
+);
+
+-- Заполняем кухни
+INSERT INTO cuisines (name) VALUES
+    ('Итальянская'),
+    ('Японская'),
+    ('Мексиканская'),
+    ('Французская'),
+    ('Индийская'),
+    ('Китайская'),
+    ('Русская'),
+    ('Греческая'),
+    ('Американская'),
+    ('Тайская');
+
+CREATE TABLE recipes_italian  PARTITION OF recipes FOR VALUES IN (1);
+CREATE TABLE recipes_japanese PARTITION OF recipes FOR VALUES IN (2);
+CREATE TABLE recipes_mexican  PARTITION OF recipes FOR VALUES IN (3);
+CREATE TABLE recipes_french   PARTITION OF recipes FOR VALUES IN (4);
+CREATE TABLE recipes_indian   PARTITION OF recipes FOR VALUES IN (5);
+CREATE TABLE recipes_chinese  PARTITION OF recipes FOR VALUES IN (6);
+CREATE TABLE recipes_russian  PARTITION OF recipes FOR VALUES IN (7);
+CREATE TABLE recipes_greek    PARTITION OF recipes FOR VALUES IN (8);
+CREATE TABLE recipes_american PARTITION OF recipes FOR VALUES IN (9);
+CREATE TABLE recipes_thai     PARTITION OF recipes FOR VALUES IN (10);
+
+-- Индексы
+CREATE INDEX idx_recipes_fts ON recipes
+    USING GIN(to_tsvector('russian', title || ' ' || coalesce(description, '')));
+
+CREATE INDEX idx_recipes_trgm ON recipes
+    USING GIN(title gin_trgm_ops);
+
+CREATE INDEX idx_recipes_cook_time  ON recipes(cook_time);
+CREATE INDEX idx_recipes_difficulty ON recipes(difficulty);
+CREATE INDEX idx_recipes_created_at ON recipes(created_at DESC);
+
+CREATE INDEX idx_recipe_ingredients_recipe ON recipe_ingredients(recipe_id);
+CREATE INDEX idx_recipe_tags_recipe        ON recipe_tags(recipe_id);
+CREATE INDEX idx_recipe_tags_tag           ON recipe_tags(tag_id);

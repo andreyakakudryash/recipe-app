@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: recipe_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: recipe_db
+      POSTGRES_USER: recipe_user
+      POSTGRES_PASSWORD: recipe_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: recipe_backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=recipe_db
+      - DB_USER=recipe_user
+      - DB_PASSWORD=recipe_pass
+      - SERVER_PORT=8080
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
