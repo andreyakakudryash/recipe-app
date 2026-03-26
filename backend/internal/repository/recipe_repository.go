@@ -15,7 +15,6 @@ func NewRecipeRepository(db *sqlx.DB) *RecipeRepository {
 	return &RecipeRepository{db: db}
 }
 
-// Получить список рецептов с cursor-based пагинацией
 func (r *RecipeRepository) GetAll(cursor int64, limit int, cuisineID int, maxCookTime int) ([]models.Recipe, error) {
 	query := `
 		SELECT r.id, r.title, r.description, r.cuisine_id,
@@ -52,7 +51,6 @@ func (r *RecipeRepository) GetAll(cursor int64, limit int, cuisineID int, maxCoo
 	return recipes, err
 }
 
-// Получить один рецепт по ID
 func (r *RecipeRepository) GetByID(id int64) (*models.Recipe, error) {
 	var recipe models.Recipe
 	err := r.db.Get(&recipe, `
@@ -68,7 +66,6 @@ func (r *RecipeRepository) GetByID(id int64) (*models.Recipe, error) {
 	return &recipe, nil
 }
 
-// Поиск по названию
 func (r *RecipeRepository) Search(query string, cursor int64, limit int) ([]models.Recipe, error) {
 	var recipes []models.Recipe
 
@@ -79,8 +76,9 @@ func (r *RecipeRepository) Search(query string, cursor int64, limit int) ([]mode
 		FROM recipes r
 		JOIN cuisines c ON c.id = r.cuisine_id
 		WHERE (
-			to_tsvector('russian', r.title) @@ plainto_tsquery('russian', $1)
-			OR r.title ILIKE '%' || $1 || '%'
+			to_tsvector('russian', r.title || ' ' || coalesce(r.description, ''))
+			@@ plainto_tsquery('russian', $1)
+			OR similarity(r.title, $1) > 0.1
 		)`
 
 	args := []interface{}{query}
@@ -99,13 +97,19 @@ func (r *RecipeRepository) Search(query string, cursor int64, limit int) ([]mode
 	return recipes, err
 }
 
-// Создать рецепт
 func (r *RecipeRepository) Create(req *models.CreateRecipeRequest) (*models.Recipe, error) {
 	var recipe models.Recipe
 	err := r.db.QueryRowx(`
-		INSERT INTO recipes (title, description, cuisine_id, cook_time, servings, difficulty)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, title, description, cuisine_id, cook_time, servings, difficulty, created_at`,
+		WITH inserted AS (
+			INSERT INTO recipes (title, description, cuisine_id, cook_time, servings, difficulty)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id, title, description, cuisine_id, cook_time, servings, difficulty, created_at
+		)
+		SELECT i.id, i.title, i.description, i.cuisine_id,
+		       c.name as cuisine_name, i.cook_time, i.servings,
+		       i.difficulty, i.created_at
+		FROM inserted i
+		JOIN cuisines c ON c.id = i.cuisine_id`,
 		req.Title, req.Description, req.CuisineID,
 		req.CookTime, req.Servings, req.Difficulty,
 	).StructScan(&recipe)
@@ -115,15 +119,21 @@ func (r *RecipeRepository) Create(req *models.CreateRecipeRequest) (*models.Reci
 	return &recipe, nil
 }
 
-// Обновить рецепт
 func (r *RecipeRepository) Update(id int64, req *models.UpdateRecipeRequest) (*models.Recipe, error) {
 	var recipe models.Recipe
 	err := r.db.QueryRowx(`
-		UPDATE recipes
-		SET title = $1, description = $2, cook_time = $3,
-		    servings = $4, difficulty = $5
-		WHERE id = $6
-		RETURNING id, title, description, cuisine_id, cook_time, servings, difficulty, created_at`,
+		WITH updated AS (
+			UPDATE recipes
+			SET title = $1, description = $2, cook_time = $3,
+			    servings = $4, difficulty = $5
+			WHERE id = $6
+			RETURNING id, title, description, cuisine_id, cook_time, servings, difficulty, created_at
+		)
+		SELECT u.id, u.title, u.description, u.cuisine_id,
+		       c.name as cuisine_name, u.cook_time, u.servings,
+		       u.difficulty, u.created_at
+		FROM updated u
+		JOIN cuisines c ON c.id = u.cuisine_id`,
 		req.Title, req.Description, req.CookTime,
 		req.Servings, req.Difficulty, id,
 	).StructScan(&recipe)
@@ -133,20 +143,33 @@ func (r *RecipeRepository) Update(id int64, req *models.UpdateRecipeRequest) (*m
 	return &recipe, nil
 }
 
-// Удалить рецепт
 func (r *RecipeRepository) Delete(id int64) error {
-	_, err := r.db.Exec(`DELETE FROM recipes WHERE id = $1`, id)
-	return err
+	result, err := r.db.Exec(`DELETE FROM recipes WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("not_found")
+	}
+	return nil
 }
 
-// Общее количество рецептов
 func (r *RecipeRepository) Count() (int64, error) {
 	var count int64
-	err := r.db.Get(&count, `SELECT COUNT(*) FROM recipes`)
+	err := r.db.Get(&count, `
+		SELECT COALESCE(SUM(n_live_tup), 0)::bigint
+		FROM pg_stat_user_tables
+		WHERE relname LIKE 'recipes_%'`)
+	if err != nil || count == 0 {
+		err = r.db.Get(&count, `
+			SELECT reltuples::bigint
+			FROM pg_class
+			WHERE relname = 'recipes'`)
+	}
 	return count, err
 }
 
-// Получить ингредиенты рецепта
 func (r *RecipeRepository) GetIngredients(recipeID int64) ([]models.Ingredient, error) {
 	var ingredients []models.Ingredient
 	err := r.db.Select(&ingredients, `

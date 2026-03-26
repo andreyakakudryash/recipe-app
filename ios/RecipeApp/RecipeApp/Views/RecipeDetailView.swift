@@ -15,6 +15,7 @@ struct RecipeDetailView: View {
     @State private var ingredients: [Ingredient] = []
     @State private var isLoadingIngredients = false
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
     @EnvironmentObject var favoritesStore: FavoritesStore
     
     var body: some View {
@@ -162,11 +163,24 @@ struct RecipeDetailView: View {
 
                     Button("Изменить") { showEditForm = true }
                         .foregroundStyle(.orange)
+                    Button {
+                        Task {
+                            try? await APIClient.shared.deleteRecipe(id: recipe.id)
+                            await MainActor.run {dismiss()}
+                        }
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundStyle(.red)
+                    }
                 }
             }
         }
         .sheet(isPresented: $showEditForm) {
-            RecipeFormView(recipe: recipe) { _ in }
+            RecipeFormView(recipe: recipe) { request in 
+                Task {
+                    _ = try? await APIClient.shared.updateRecipe(id: recipe.id, request)
+                }
+            }
         }
         .task {
             isLoadingIngredients = true

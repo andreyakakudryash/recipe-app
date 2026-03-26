@@ -6,8 +6,10 @@ import (
 	"backend/internal/handlers"
 	"backend/internal/repository"
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 )
@@ -19,7 +21,15 @@ func main() {
 	recipeRepo := repository.NewRecipeRepository(database)
 	recipeHandler := handlers.NewRecipeHandler(recipeRepo)
 
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	})
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowMethods: "GET,POST,PUT,DELETE",
+		AllowHeaders: "Content-Type",
+	}))
 	app.Use(logger.New())
 	app.Use(recover.New())
 

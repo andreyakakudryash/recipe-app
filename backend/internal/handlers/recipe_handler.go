@@ -67,7 +67,10 @@ func (h *RecipeHandler) Search(c *fiber.Ctx) error {
 
 	recipes, err := h.repo.Search(query, cursor, limit)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		return c.JSON(fiber.Map{
+			"data":        []interface{}{},
+			"next_cursor": 0,
+		})
 	}
 
 	var nextCursor int64

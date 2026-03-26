@@ -49,6 +49,13 @@ struct RecipeListView: View {
                                 .onAppear {
                                     Task { await viewModel.loadMoreIfNeeded(currentItem: recipe) }
                                 }
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        Task { await viewModel.deleteRecipe(id: recipe.id) }
+                                    } label: {
+                                        Label("Удалить", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal, 16)

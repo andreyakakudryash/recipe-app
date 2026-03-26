@@ -3,9 +3,16 @@ import Foundation
 
 class APIClient {
     static let shared = APIClient()
-    private let baseURL = "http://localhost:8080/api/v1"
 
-    private init() {}
+    private let baseURL = "http://localhost:8080/api/v1"
+    private let session: URLSession
+    
+    private init() {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 10
+        config.timeoutIntervalForResource = 15
+        session = URLSession(configuration: config)
+}
 
     // Получить список рецептов
     func getRecipes(
@@ -49,7 +56,7 @@ class APIClient {
         guard let url = URL(string: "\(baseURL)/recipes/\(id)") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "DELETE"
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw APIError.serverError
         }
@@ -70,7 +77,7 @@ class APIClient {
 
     private func fetch<T: Decodable>(_ urlString: String) async throws -> T {
         guard let url = URL(string: urlString) else { throw APIError.invalidURL }
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await session.data(from: url)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw APIError.serverError
         }
@@ -87,7 +94,7 @@ class APIClient {
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 ||
               (response as? HTTPURLResponse)?.statusCode == 201 else {
             throw APIError.serverError
