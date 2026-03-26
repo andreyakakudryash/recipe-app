@@ -4,7 +4,7 @@ import Foundation
 class APIClient {
     static let shared = APIClient()
 
-    private let baseURL = "http://localhost:8080/api/v1"
+    private let baseURL = "http://158.160.129.250/api/v1"
     private let session: URLSession
     
     private init() {

@@ -56,9 +56,9 @@ var (
 )
 
 const (
-	totalRecipes = 100_000_000
+	totalRecipes = 1_000_000
 	batchSize    = 10_000
-	dbConnStr    = "host=localhost port=5432 user=recipe_user password=recipe_pass dbname=recipe_db sslmode=disable"
+	dbConnStr    = "host=postgres.recipe-app.svc.cluster.local port=5432 user=recipe_user password=recipe_pass dbname=recipe_db sslmode=disable"
 )
 
 func main() {

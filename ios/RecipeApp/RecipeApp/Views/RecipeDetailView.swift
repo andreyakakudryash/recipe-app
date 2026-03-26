@@ -2,7 +2,9 @@
 import SwiftUI
 
 struct RecipeDetailView: View {
-    let recipe: Recipe
+    @State var recipe: Recipe
+    var onDelete: (() -> Void)? = nil
+    var onEdit: ((Recipe) -> Void)? = nil
     let categories = ["burger", "butter-chicken", "dessert", "idly",
                       "pasta", "pizza", "rice", "samosa"]
 
@@ -22,9 +24,6 @@ struct RecipeDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
 
-                // Шапка с картинкой
-
-                
                 ZStack(alignment: .bottomLeading) {
                     AsyncImage(url: imageURL) { phase in
                         switch phase {
@@ -70,13 +69,10 @@ struct RecipeDetailView: View {
                     }
                     .padding(20)
                 }
-
                 .frame(height: 320)
 
-                // Контент
                 VStack(alignment: .leading, spacing: 20) {
 
-                    // Быстрая инфо
                     HStack(spacing: 0) {
                         QuickInfoItem(icon: "clock.fill", value: "\(recipe.cookTime)", unit: "минут", color: .blue)
                         Divider().frame(height: 50)
@@ -88,7 +84,6 @@ struct RecipeDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
 
-                    // Описание
                     SectionCard(title: "Описание") {
                         Text(recipe.description)
                             .font(.body)
@@ -96,7 +91,6 @@ struct RecipeDetailView: View {
                             .lineSpacing(5)
                     }
 
-                    // Ингредиенты
                     SectionCard(title: "Ингредиенты") {
                         if isLoadingIngredients {
                             HStack {
@@ -131,7 +125,6 @@ struct RecipeDetailView: View {
                         }
                     }
 
-                    // Детали
                     SectionCard(title: "Детали") {
                         VStack(spacing: 8) {
                             DetailRow(label: "Кухня", value: recipe.cuisineName, icon: "globe")
@@ -163,22 +156,28 @@ struct RecipeDetailView: View {
 
                     Button("Изменить") { showEditForm = true }
                         .foregroundStyle(.orange)
-                    Button {
-                        Task {
-                            try? await APIClient.shared.deleteRecipe(id: recipe.id)
-                            await MainActor.run {dismiss()}
+
+                    if onDelete != nil {
+                        Button {
+                            onDelete?()
+                            dismiss()
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundStyle(.red)
                         }
-                    } label: {
-                        Image(systemName: "trash")
-                            .foregroundStyle(.red)
                     }
                 }
             }
         }
         .sheet(isPresented: $showEditForm) {
-            RecipeFormView(recipe: recipe) { request in 
+            RecipeFormView(recipe: recipe) { request in
                 Task {
-                    _ = try? await APIClient.shared.updateRecipe(id: recipe.id, request)
+                    if let updated = try? await APIClient.shared.updateRecipe(id: recipe.id, request) {
+                        await MainActor.run {
+                            recipe = updated
+                            onEdit?(updated)
+                        }
+                    }
                 }
             }
         }
@@ -273,3 +272,4 @@ struct DetailRow: View {
         .padding(.vertical, 4)
     }
 }
+

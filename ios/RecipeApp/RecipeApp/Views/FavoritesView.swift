@@ -33,24 +33,33 @@ struct FavoritesView: View {
                         description: Text("Нажмите ♥ на рецепте чтобы сохранить его")
                     )
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(store.favorites) { recipe in
-                                NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
-                                    RecipeCardView(recipe: recipe, compact: false)
-                                }
-                                .buttonStyle(.plain)
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        store.remove(recipe)
-                                    } label: {
-                                        Label("Удалить", systemImage: "heart.slash")
+                    List {
+                        ForEach(store.favorites) { recipe in
+                            NavigationLink(destination: RecipeDetailView(
+                                recipe: recipe,
+                                onDelete: {
+                                    store.remove(recipe)
+                                    Task { try? await APIClient.shared.deleteRecipe(id: recipe.id) }
+                                },
+                                onEdit: { updated in
+                                    if let idx = store.favorites.firstIndex(where: { $0.id == updated.id }) {
+                                        store.favorites[idx] = updated
                                     }
                                 }
+                            )) {
+                                RecipeCardView(recipe: recipe, compact: false)
+                            }
+                            .buttonStyle(.plain)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .listRowSeparator(.hidden)
+                        }
+                        .onDelete { indexSet in
+                            for index in indexSet {
+                                store.remove(store.favorites[index])
                             }
                         }
-                        .padding(16)
                     }
+                    .listStyle(.plain)
                 }
             }
             .background(Color(.systemGroupedBackground))
@@ -78,3 +87,4 @@ struct FavoritesView: View {
         }
     }
 }
+

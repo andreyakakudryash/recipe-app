@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: recipe-backend
-          image: IMAGE_PLACEHOLDER
+          image: cr.yandex/crpptg61knsqflhfs9d0/recipe-backend:v1.0
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

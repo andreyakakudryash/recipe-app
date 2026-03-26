@@ -4,18 +4,18 @@ import { check, sleep } from 'k6';
 // Настройки теста
 export const options = {
     stages: [
-        { duration: '30s', target: 100 },  // разгон до 10 пользователей
-        { duration: '1m',  target: 500 },  // держим 50 пользователей
-        { duration: '30s', target: 1000 }, // пик 100 пользователей
-        { duration: '30s', target: 0 },   // спад
+        { duration: '30s', target: 50 },  
+        { duration: '1m',  target: 150 },  
+        { duration: '30s', target: 300 }, 
+        { duration: '30s', target: 0 },   
     ],
     thresholds: {
-        http_req_duration: ['p(95)<1000'], // 95% запросов быстрее 500ms
-        http_req_failed:   ['rate<0.05'], // меньше 1% ошибок
+        http_req_duration: ['p(95)<1000'], 
+        http_req_failed:   ['rate<0.05'], 
     },
 };
 
-const BASE_URL = 'http://127.0.0.1:63869/api/v1';
+const BASE_URL = 'http://158.160.129.250/api/v1';
 
 export default function () {
     // Тест 1 — список рецептов

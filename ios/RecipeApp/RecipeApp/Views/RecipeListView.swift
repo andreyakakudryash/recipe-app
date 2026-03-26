@@ -1,3 +1,4 @@
+
 import SwiftUI
 
 class AppSettings: ObservableObject {
@@ -42,19 +43,16 @@ struct RecipeListView: View {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 12) {
                             ForEach(viewModel.recipes) { recipe in
-                                NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
+                                NavigationLink(destination: RecipeDetailView(recipe: recipe, onEdit: { updated in
+                                    if let idx = viewModel.recipes.firstIndex(where: { $0.id == updated.id }) {
+                                        viewModel.recipes[idx] = updated
+                                    }
+                                })) {
                                     RecipeCardView(recipe: recipe, compact: settings.gridColumns > 1)
                                 }
                                 .buttonStyle(.plain)
                                 .onAppear {
                                     Task { await viewModel.loadMoreIfNeeded(currentItem: recipe) }
-                                }
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        Task { await viewModel.deleteRecipe(id: recipe.id) }
-                                    } label: {
-                                        Label("Удалить", systemImage: "trash")
-                                    }
                                 }
                             }
                         }
@@ -373,3 +371,4 @@ struct MetaTag: View {
         }
     }
 }
+
