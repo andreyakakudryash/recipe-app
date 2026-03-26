@@ -78,7 +78,6 @@ func (r *RecipeRepository) Search(query string, cursor int64, limit int) ([]mode
 		WHERE (
 			to_tsvector('russian', r.title || ' ' || coalesce(r.description, ''))
 			@@ plainto_tsquery('russian', $1)
-			OR similarity(r.title, $1) > 0.1
 		)`
 
 	args := []interface{}{query}

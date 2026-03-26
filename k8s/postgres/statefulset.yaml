@@ -34,9 +34,21 @@ spec:
               command: ["pg_isready", "-U", "recipe_user", "-d", "recipe_db"]
             initialDelaySeconds: 10
             periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "recipe_user", "-d", "recipe_db"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: initdb
+          configMap:
+            name: postgres-initdb
   volumeClaimTemplates:
     - metadata:
         name: postgres-storage

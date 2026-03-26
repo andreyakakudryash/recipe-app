@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: recipe-backend
-          image: recipe-backend:latest
-          imagePullPolicy: Never
+          image: IMAGE_PLACEHOLDER
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:
@@ -38,10 +38,17 @@ spec:
               cpu: "100m"
             limits:
               memory: "256Mi"
-              cpu: "250m"
+              cpu: "500m"
           readinessProbe:
             httpGet:
               path: /health
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
