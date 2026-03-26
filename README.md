@@ -4,7 +4,7 @@
 
 ## Демонстрация работы
 
-[Видео демонстрации приложения]()
+[Видео демонстрации приложения](https://drive.google.com/file/d/159sfpOswScv3ail9aLBG-ZggnzMzqj5P/view?usp=sharing)
 
 ## Стек технологий
 
